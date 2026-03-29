@@ -168,7 +168,7 @@ load_context() {
   write_env DIY_WORK "$DIY_WORK"
   write_env SOURCE_CODE "$SOURCE_CODE"
   write_env SOURCE "$SOURCE"
-  write_env SOURCE_BRANCH "$SOURCE_BRANCH"
+  write_env SOURCE_BRANCH "${SOURCE_BRANCH:-}"
   write_env REPO_BRANCH "$REPO_BRANCH"
   write_env REPO_URL "$REPO_URL"
   write_env CONFIG_FILE "$CONFIG_FILE"
