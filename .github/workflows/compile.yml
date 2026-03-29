@@ -65,6 +65,8 @@ jobs:
       run: |
         git clone -q -b "${REPO_BRANCH}" --single-branch "${REPO_URL}" openwrt
         ln -sf /${{ env.DIY_WORK }}/openwrt ${GITHUB_WORKSPACE}/openwrt
+        mkdir -p "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}"
+        ln -sfn .. "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}/openwrt"
         bash ${{ env.COMMON_SH }} Diy_feedsconf
     
     - name: 公告
