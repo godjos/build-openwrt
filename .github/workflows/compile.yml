@@ -5,11 +5,6 @@
 
 name: 编译主程序
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'build/Immortalwrt/relevance/start'
   workflow_dispatch:
 
 env:
@@ -25,6 +20,9 @@ jobs:
   build:
     name: 编译 "${{matrix.target}}"
     runs-on: ubuntu-22.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.target }}
+      cancel-in-progress: true
     
     env:
       FOLDER_NAME: ${{ matrix.target }}

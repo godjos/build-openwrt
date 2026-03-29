@@ -541,7 +541,7 @@ EOF
   git -C "$repo_root" push --quiet origin HEAD:"${GITHUB_REF_NAME:-main}"
   log "trigger pushed for $folder"
 
-  local workflow_path=".github/workflows/compile.yml"
+  local workflow_path="compile.yml"
   local payload
   payload="$(jq -n --arg ref "${GITHUB_REF_NAME:-main}" '{ref:$ref}')"
   curl -fsSL -X POST \
