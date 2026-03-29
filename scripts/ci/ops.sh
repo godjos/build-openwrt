@@ -221,6 +221,7 @@ prepare_openwrt() {
   local openwrt_root="${2:?usage: prepare-openwrt <folder> <openwrt-root>}"
   local build_dir="$repo_root/build/$folder"
   local seed_file="$build_dir/seed/${CONFIG_FILE:-}"
+  local staged_seed="$repo_root/seed/${CONFIG_FILE:-}"
 
   [[ -d "$openwrt_root" ]] || die "openwrt root not found: $openwrt_root"
   mkdir -p "$repo_root/.ci/$folder"
@@ -230,6 +231,13 @@ prepare_openwrt() {
   if [[ -f "$seed_file" ]]; then
     cp -f "$seed_file" "$openwrt_root/.config"
     log "seed applied: $seed_file"
+  elif [[ -f "$staged_seed" ]]; then
+    cp -f "$staged_seed" "$openwrt_root/.config"
+    log "seed applied: $staged_seed"
+  else
+    local available_seed
+    available_seed="$(find "$build_dir/seed" -maxdepth 1 -type f | sort | xargs -r -n 1 basename | tr '\n' ' ' | sed 's/ $//')"
+    die "seed file missing for folder=$folder config=${CONFIG_FILE:-}; checked $seed_file and $staged_seed; available: ${available_seed:-none}"
   fi
 
   if [[ -d "$build_dir/diy" ]]; then
@@ -265,6 +273,18 @@ prepare_openwrt() {
     (cd "$openwrt_root" && make defconfig)
     log "defconfig completed"
   fi
+}
+
+stage_seed() {
+  local folder="${1:?usage: stage-seed <folder>}"
+  local build_dir="$repo_root/build/$folder"
+  local seed_src="$build_dir/seed"
+  local seed_dst="$repo_root/seed"
+
+  [[ -d "$seed_src" ]] || die "seed directory not found: $seed_src"
+  mkdir -p "$seed_dst"
+  rsync -a --delete "$seed_src/" "$seed_dst/"
+  log "seed staged: $seed_src -> $seed_dst"
 }
 
 finalize_firmware() {
@@ -592,6 +612,9 @@ case "$cmd" in
   prepare-openwrt)
     prepare_openwrt "${1:?usage: prepare-openwrt <folder> <openwrt-root>}" "${2:?usage: prepare-openwrt <folder> <openwrt-root>}"
     ;;
+  stage-seed)
+    stage_seed "${1:?usage: stage-seed <folder>}"
+    ;;
   finalize-firmware)
     finalize_firmware "${1:?usage: finalize-firmware <folder> <openwrt-root>}" "${2:?usage: finalize-firmware <folder> <openwrt-root>}"
     ;;
@@ -626,6 +649,7 @@ commands:
   bootstrap
   cleanup-disk
   load-context <folder>
+  stage-seed <folder>
   prepare-openwrt <folder> <openwrt-root>
   finalize-firmware <folder> <openwrt-root>
   package-aarch [dir]

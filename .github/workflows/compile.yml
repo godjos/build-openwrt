@@ -53,15 +53,19 @@ jobs:
     - name: 载入编译上下文
       run: bash scripts/ci/ops.sh load-context ${{ matrix.target }}
 
+    - name: 预置 seed 文件
+      run: bash scripts/ci/ops.sh stage-seed "${{ matrix.target }}"
+
     - name: 检测 seed/文件
-      uses: 281677160/common@mishi
+      run: |
+        test -d seed
+        test -f "seed/${CONFIG_FILE}"
         
     - name: 部署编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo bash -c 'bash <(curl -fsSL https://github.com/281677160/common/raw/main/custom/ubuntu.sh)'
-        sudo timedatectl set-timezone "$TZ"
+        bash scripts/ci/ops.sh bootstrap
         sudo mkdir -p /${{ env.DIY_WORK }}
         sudo chown ${USER}:${GROUPS} /${{ env.DIY_WORK }}
 
@@ -72,19 +76,19 @@ jobs:
         ln -sf /${{ env.DIY_WORK }}/openwrt ${GITHUB_WORKSPACE}/openwrt
         mkdir -p "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}"
         ln -sfn .. "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}/openwrt"
-        bash ${{ env.COMMON_SH }} Diy_feedsconf
-    
+        bash "${GITHUB_WORKSPACE}/scripts/ci/ops.sh" prepare-openwrt "${{ matrix.target }}" "${GITHUB_WORKSPACE}/openwrt"
+
     - name: 公告
       continue-on-error: true
-      uses: 281677160/common@message
+      run: bash scripts/ci/ops.sh notice 公告
  
     - name: 运行自定义文件和其他
-      uses: 281677160/common@need
+      run: bash scripts/ci/ops.sh need
         
     - name: 编译信息
       continue-on-error: true
       if: env.COMPILATION_INFORMATION == 'true'
-      uses: 281677160/common@message
+      run: bash scripts/ci/ops.sh notice 编译信息
         
     - name: 缓存加速
       if: env.CACHEWRTBUILD_SWITCH == 'true'
@@ -110,20 +114,27 @@ jobs:
 
     - name: 自动打包armsr_rootfs_tar_gz
       if: steps.compile.outcome == 'success' && env.ONLINE_FIRMWARE == 'true'
-      uses: 281677160/common@aarch
+      run: bash scripts/ci/ops.sh package-aarch
 
     - name: 整理固件文件夹(需配合diy-part.sh设定使用)
       continue-on-error: true
       if: steps.compile.outcome == 'success'
       run: |
         cd openwrt
-        bash ${{ env.COMMON_SH }} Diy_firmware
+        bash "${GITHUB_WORKSPACE}/scripts/ci/ops.sh" finalize-firmware "${{ matrix.target }}" "${GITHUB_WORKSPACE}/openwrt"
 
     - name: 发送[在线更新固件]至云端
       continue-on-error: true
       if: steps.compile.outcome == 'success' && env.UPDATE_FIRMWARE_ONLINE == 'true'
-      uses: 281677160/common@cloud
+      run: bash scripts/ci/ops.sh notice 在线更新固件已生成
         
     - name: 上传,发布,信息通知
-      if: steps.compile.outcome == 'success'
-      uses: 281677160/common@uploads
+      if: steps.compile.outcome == 'success' && env.UPLOAD_FIRMWARE == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.target }}-${{ github.run_id }}
+        path: openwrt/bin/targets
+
+    - name: 发布到 Releases
+      if: steps.compile.outcome == 'success' && env.UPLOAD_RELEASE == 'true'
+      run: bash scripts/ci/ops.sh upload-release Update openwrt/bin/targets
