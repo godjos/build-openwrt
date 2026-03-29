@@ -1,5 +1,5 @@
 #
-# 请大家记住拉取的是我的 281677160/build-actions 仓库，拉取的是其他仓库有问题，别问我，我也不清楚什么问题
+# 本工作流已改为使用仓库内脚本
 #
 # 因为SSH连接配置固件直接编译，会给github停止编译的,所以要另外触发启动编译程序
 #
@@ -114,7 +114,20 @@ jobs:
       uses: actions/checkout@v5
       
     - name: 检测密匙/文件/版本
-      uses: 281677160/common@mishi
+      env:
+        REPO_BRANCH: ${{ inputs.REPO_BRANCH }}
+        CONFIG_FILE: ${{ inputs.CONFIG_FILE }}
+        INFORMATION_NOTICE: ${{ inputs.INFORMATION_NOTICE }}
+        KEEP_WORKFLOWS: ${{ inputs.KEEP_WORKFLOWS }}
+        KEEP_RELEASES: ${{ inputs.KEEP_RELEASES }}
+        SSH_ACTION: ${{ inputs.SSH_ACTION }}
+        UPLOAD_FIRMWARE: ${{ inputs.UPLOAD_FIRMWARE }}
+        UPLOAD_RELEASE: ${{ inputs.UPLOAD_RELEASE }}
+        CACHEWRTBUILD_SWITCH: ${{ inputs.CACHEWRTBUILD_SWITCH }}
+        UPDATE_FIRMWARE_ONLINE: ${{ inputs.UPDATE_FIRMWARE_ONLINE }}
+      run: |
+        bash scripts/ci/ops.sh check-token
+        bash scripts/ci/ops.sh load-context build/${{ matrix.target }}
 
     - name: 部署编译环境
       env:
@@ -133,38 +146,25 @@ jobs:
         ln -sf /${{ env.DIY_WORK }}/openwrt ${GITHUB_WORKSPACE}/openwrt
         mkdir -p "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}"
         ln -sfn .. "${GITHUB_WORKSPACE}/openwrt/${{ github.event.repository.name }}/openwrt"
-        bash ${{ env.COMMON_SH }} Diy_feedsconf
-        echo "SHANG_CHUAN=true" >> ${GITHUB_ENV}
+        bash "${GITHUB_WORKSPACE}/scripts/ci/ops.sh" prepare-openwrt "${FOLDER_NAME}" "${GITHUB_WORKSPACE}/openwrt"
     
     - name: 公告
       continue-on-error: true
-      uses: 281677160/common@message
+      run: bash scripts/ci/ops.sh notice 公告
  
     - name: 运行其他和SSH远程(make menuconfig)
       id: info
-      uses: 281677160/common@need
+      run: bash scripts/ci/ops.sh need
         
     - name: 编译信息
       continue-on-error: true
       if: env.COMPILATION_INFORMATION == 'true'
-      uses: 281677160/common@message
+      run: bash scripts/ci/ops.sh notice 编译信息
     
     - name: 清理releases和workflows
       continue-on-error: true
-      uses: danshui-git/delete-releases-workflows@main
-      with:
-        delete_releases: true
-        prerelease_option: all
-        releases_keep_keyword: targz/Update
-        releases_keep_latest: ${{ env.KEEP_RELEASES }}
-        delete_tags: true
-        max_releases_fetch: 300
-        delete_workflows: true
-        workflows_keep_latest: ${{ env.KEEP_WORKFLOWS }}
-        max_workflows_fetch: 300
-        repo: ${{ github.repository }}
-        gh_token: ${{ secrets.REPO_TOKEN }}
+      run: bash scripts/ci/ops.sh cleanup-github
         
     - name: 触发启动"${{ matrix.target }}"开始编译
       if: steps.info.outcome == 'success'
-      uses: 281677160/common@trigger
+      run: bash scripts/ci/ops.sh trigger "${{ matrix.target }}"

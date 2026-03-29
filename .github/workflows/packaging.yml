@@ -223,23 +223,14 @@ jobs:
     name: 打包armsr_rootfs_tar_gz
     runs-on: ubuntu-22.04
     steps:
-    - name: 释放Ubuntu磁盘空间
-      uses: danshui-git/free-disk-space@main
-      with:
-        remove_android: true
-        remove_dotnet: true
-        remove_haskell: true
-        remove_tool_cache: true
-        remove_swap: true
-        remove_docker_image: true
-        remove_packages: "azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox postgresql* temurin-* *llvm* mysql* dotnet-sdk-*"
-        remove_folders: "/usr/share/swift /usr/share/miniconda /usr/share/az* /usr/share/glade* /usr/local/lib/node_modules /usr/local/share/chromium /usr/local/share/powershell"
-    
     - name: 准备结束
       uses: actions/checkout@v5
 
     - name: 密匙检测
-      uses: 281677160/common@yaoshi
+      run: bash scripts/ci/ops.sh check-token
+
+    - name: 释放Ubuntu磁盘空间
+      run: bash scripts/ci/ops.sh cleanup-disk
 
     - name: 整理变量
       run: |
@@ -259,11 +250,8 @@ jobs:
         echo "Tongzhi_Date=$(date +%Y年%m月%d日)" >> ${GITHUB_ENV}
 
     - name: 部署编译环境
-      env:
-        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo bash -c 'bash <(curl -fsSL https://github.com/281677160/common/raw/main/custom/ubuntu.sh)'
-        sudo timedatectl set-timezone "Asia/Shanghai"
+        bash scripts/ci/ops.sh bootstrap
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
@@ -298,8 +286,15 @@ jobs:
 
     - name: 自动打包armsr_rootfs_tar_gz
       id: compile
-      uses: 281677160/common@aarch
+      run: bash scripts/ci/ops.sh package-aarch openwrt/bin/targets
+
+    - name: 上传固件到 Artifacts
+      if: steps.compile.outcome == 'success' && env.UPLOAD_FIRMWARE == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: packaging-${{ github.run_id }}
+        path: openwrt/bin/targets
 
     - name: 上传,发布
-      if: steps.compile.outcome == 'success'
-      uses: 281677160/common@uploads
+      if: steps.compile.outcome == 'success' && env.UPLOAD_RELEASE == 'true'
+      run: bash scripts/ci/ops.sh upload-release Update openwrt/bin/targets
