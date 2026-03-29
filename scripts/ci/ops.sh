@@ -540,6 +540,17 @@ EOF
   git -C "$repo_root" commit -m "Update $(date +%Y-%m%d-%H%M%S)" || true
   git -C "$repo_root" push --quiet origin HEAD:"${GITHUB_REF_NAME:-main}"
   log "trigger pushed for $folder"
+
+  local workflow_path=".github/workflows/compile.yml"
+  local payload
+  payload="$(jq -n --arg ref "${GITHUB_REF_NAME:-main}" '{ref:$ref}')"
+  curl -fsSL -X POST \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -d "$payload" \
+    "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_path}/dispatches" >/dev/null
+  log "workflow dispatched: $workflow_path on ref ${GITHUB_REF_NAME:-main}"
 }
 
 create_workflow_folder() {
