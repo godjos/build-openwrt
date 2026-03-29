@@ -119,7 +119,7 @@ jobs:
         UPDATE_FIRMWARE_ONLINE: ${{ inputs.UPDATE_FIRMWARE_ONLINE }}
       run: |
         bash scripts/ci/ops.sh check-token
-        bash scripts/ci/ops.sh load-context build/${{ matrix.target }}
+        bash scripts/ci/ops.sh load-context "${{ matrix.target }}"
 
     - name: 部署编译环境
       env:
