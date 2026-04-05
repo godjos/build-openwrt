@@ -260,7 +260,7 @@ prepare_openwrt() {
   fi
 
   if [[ -x "$build_dir/diy-part.sh" ]]; then
-    CLEAR_PATH="$CLEAR_PATH_FILE" DELETE="$DELETE_FILE" bash "$build_dir/diy-part.sh"
+    CLEAR_PATH="$CLEAR_PATH_FILE" DELETE="$DELETE_FILE" OPENWRT_ROOT="$openwrt_root" bash "$build_dir/diy-part.sh"
     log "diy-part executed"
   fi
 
