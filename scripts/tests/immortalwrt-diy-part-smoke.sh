@@ -43,4 +43,9 @@ run_case "$tmp_nonzero_source" "99-immortalwrt-ipv4-ipaddr" yes
 
 run_case "$tmp_zero_source" "99-immortalwrt-ipv4-ipaddr" no
 
+grep -q "openwrt-25.12" "$repo_root/.github/workflows/Immortalwrt.yml"
+grep -q "openwrt-25.12" "$repo_root/build/Immortalwrt/settings.ini"
+grep -q "default: 'openwrt-24.10'" "$repo_root/.github/workflows/Immortalwrt.yml"
+grep -q 'REPO_BRANCH="master"' "$repo_root/build/Immortalwrt/settings.ini"
+
 printf 'immortalwrt diy-part smoke test passed\n'

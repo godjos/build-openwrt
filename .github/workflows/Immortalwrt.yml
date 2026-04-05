@@ -20,6 +20,7 @@ on:
         type: choice
         options:
           - 'openwrt-24.10'
+          - 'openwrt-25.12'
           - 'openwrt-23.05'
           - 'master'
       CONFIG_FILE:
