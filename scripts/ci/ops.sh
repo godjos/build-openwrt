@@ -275,6 +275,19 @@ prepare_openwrt() {
   fi
 }
 
+sync_config_to_seed() {
+  local folder="${1:?usage: sync-config-to-seed <folder> <config-file>}"
+  local config_file="${2:?usage: sync-config-to-seed <folder> <config-file>}"
+  local openwrt_root="${3:-$repo_root/openwrt}"
+  local source_config="$openwrt_root/.config"
+  local target_seed="$repo_root/build/$folder/seed/$config_file"
+
+  [[ -f "$source_config" ]] || die "openwrt config not found: $source_config"
+  mkdir -p "$(dirname "$target_seed")"
+  cp -f "$source_config" "$target_seed"
+  log "seed synced: $source_config -> $target_seed"
+}
+
 stage_seed() {
   local folder="${1:?usage: stage-seed <folder>}"
   local build_dir="$repo_root/build/$folder"
@@ -381,6 +394,7 @@ need() {
       fi
       sleep 10
     done
+    sync_config_to_seed "${FOLDER_NAME:-}" "${CONFIG_FILE:-}" "$repo_root/openwrt"
     tmate -S "$sock" kill-session >/dev/null 2>&1 || true
     log "SSH session finished"
   else
@@ -557,6 +571,7 @@ EOF
   git -C "$repo_root" config user.name "github-actions[bot]"
   git -C "$repo_root" remote set-url origin "https://x-access-token:${token}@github.com/${GITHUB_REPOSITORY}.git"
   git -C "$repo_root" add "$rel_ini" "$start_file"
+  [[ -f "$build_dir/seed/${CONFIG_FILE:-}" ]] && git -C "$repo_root" add "$build_dir/seed/${CONFIG_FILE:-}"
   git -C "$repo_root" commit -m "Update $(date +%Y-%m%d-%H%M%S)" || true
   git -C "$repo_root" push --quiet origin HEAD:"${GITHUB_REF_NAME:-main}"
   log "trigger pushed for $folder"
