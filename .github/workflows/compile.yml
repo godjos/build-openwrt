@@ -47,6 +47,9 @@ jobs:
     - name: 准备结束
       uses: actions/checkout@v5
 
+    - name: 验证 Immortalwrt diy-part
+      run: bash scripts/tests/immortalwrt-diy-part-smoke.sh
+
     - name: 检测密匙/文件/版本
       run: bash scripts/ci/ops.sh check-token
 

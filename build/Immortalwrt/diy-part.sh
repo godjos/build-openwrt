@@ -64,6 +64,51 @@ export auto_kernel="true"
 export rootfs_size="512/2560"
 export kernel_usage="stable"
 
+if ! type apply_theme_config >/dev/null 2>&1; then
+apply_theme_config() {
+  return 0
+}
+fi
+
+if ! type render_uci_defaults >/dev/null 2>&1; then
+render_uci_defaults() {
+  return 0
+}
+fi
+
+apply_ipv4_ipaddr_defaults() {
+  local ipaddr="${Ipv4_ipaddr:-0}"
+  local openwrt_root="${OPENWRT_ROOT:-}"
+
+  if [[ -z "$ipaddr" || "$ipaddr" == "0" ]]; then
+    return 0
+  fi
+
+  if [[ ! "$ipaddr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    printf '[diy-part] skip invalid Ipv4_ipaddr=%s\n' "$ipaddr" >&2
+    return 0
+  fi
+
+  if [[ -z "$openwrt_root" || ! -d "$openwrt_root" ]]; then
+    printf '[diy-part] skip Ipv4_ipaddr=%s because OPENWRT_ROOT is missing\n' "$ipaddr" >&2
+    return 0
+  fi
+
+  local defaults_dir="$openwrt_root/files/etc/uci-defaults"
+  local defaults_file="$defaults_dir/99-immortalwrt-ipv4-ipaddr"
+
+  mkdir -p "$defaults_dir"
+  cat >"$defaults_file" <<EOF
+#!/bin/sh
+uci -q set network.lan.ipaddr='$ipaddr'
+uci -q commit network
+exit 0
+EOF
+  chmod 0755 "$defaults_file"
+}
+
+apply_ipv4_ipaddr_defaults
+
 apply_theme_config "${Mandatory_theme:-0}"
 render_uci_defaults
 
